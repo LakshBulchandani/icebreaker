@@ -124,11 +124,11 @@ https://templatemo.com/tm-590-topic-listing
                                     <div class="col-lg-8 col-12 mx-auto">
                                         <h1 class="text-white text-center">Add friend</h1>
             
-                                        <form method="get" class="custom-form mt-4 pt-2 mb-lg-0 mb-5" role="search">
+                                        <form action="http://localhost:3000/friendreq" method="post" class="custom-form mt-4 pt-2 mb-lg-0 mb-5" role="search">
                                             <div class="input-group input-group-lg">
-                                                <input name="keyword" type="search" class="form-control" id="keyword" placeholder="Enter username of friend" aria-label="Search">
+                                                <input name="friendname" type="search" class="form-control" id="friendname" placeholder="Enter username of friend" aria-label="Search">
             
-                                                <button type="submit" class="form-control">Connect+</button>
+                                                <button onclick="handleMail()" id="btnfr" class="form-control">Connect+</button>
                                             </div>
                                         </form>
                                     </div>
@@ -261,6 +261,6 @@ https://templatemo.com/tm-590-topic-listing
         <script src="js/bootstrap.bundle.min.js"></script>
         <script src="js/jquery.sticky.js"></script>
         <script src="js/custom.js"></script>
-
+        <script src="script.js"></script>
     </body>
 </html>

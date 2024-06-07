@@ -6,6 +6,9 @@ var app = express();
 const { v4: uuidv4 } = require('uuid');
 const { MongoClient } = require('mongodb');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const session = require('express-session');
+const nodemailer = require('nodemailer');
 
 const uri = "mongodb://localhost:27017";
 const path = require('path');
@@ -20,6 +23,20 @@ app.use(express.static(staticPath));
 app.use(upload.array()); 
 app.use(express.static('public'));
 app.use(express.json());
+app.use(session({
+    secret: 'your-secret-key',
+    resave: false,
+    saveUninitialized: false
+  }));
+
+var transport = nodemailer.createTransport({
+host: "sandbox.smtp.mailtrap.io",
+port: 2525,
+auth: {
+    user: "cbd306e9c626cc",
+    pass: "2aeaa68084a5ed"
+}
+});
 
 app.get('/', function(req, res){
    res.sendFile(staticPath);
@@ -86,6 +103,10 @@ app.get('/topics-listing.html', function(req, res){
     res.sendFile(staticPath+'/topics-listing.html');
 });
 
+app.get('/event_recommend.html', function(req, res){
+    res.sendFile(staticPath+'/event_recommend.html')
+});
+
 app.post('/saveuser', async(req, res) => {
     console.log(req.body);
 
@@ -118,8 +139,8 @@ app.post('/saveuser', async(req, res) => {
     catch(err){
         console.log(err);
     }
-    const token = jwt.sign(insertedUser, sanitizedEmail, { expiresIn: 60 * 24 })
-    res.status(201).json({ token, userId: generatedUserId });
+    //const token = jwt.sign(insertedUser, sanitizedEmail, { expiresIn: 60 * 24 })
+    //res.status(201).json({ token, userId: generatedUserId });
     res.sendFile(staticPath+"/index.html");
     client.close();
 })
@@ -143,9 +164,13 @@ app.post('/logon', async(req,res) => {
     
         if (returnedUser && correctPassword) {
           const token = jwt.sign(returnedUser, email, { expiresIn: 60 * 24 })
-          res.status(201).json({ token, userId: returnedUser.user_id })
+          //res.status(201).json({ token, userId: returnedUser.user_id })
+          req.session.user_id = returnedUser.user_id;
+          req.session.user = returnedUser.name;
         }
-        res.status(400).send('Invalid Credentials')
+        else {
+            res.status(400).send('Invalid Credentials');
+        }
       } catch (err) {
         console.log(err)
       }
@@ -197,7 +222,7 @@ app.post('/part', async(req,res) => {
             retreivedData = doc;
         }
         console.log(retreivedData.event_id);
-        if(retreivedData.event_id !== null)
+        if(retreivedData.event_id != null)
         {
             const eventDetails = events.find({event_name: evname})
             eventId = retreivedData.event_id;
@@ -209,14 +234,65 @@ app.post('/part', async(req,res) => {
                 no_of_participants: evnum
             }
             const insertedPart = await events_p.insertOne(data);
-            
+            res.sendFile(staticPath+"/index.html");
+        }
+        else{
+            res.status(400).send('Invalid Event Name')
         }
     }catch(err){
         console.log(err);
     }
     
-    res.sendFile(staticPath+"/index.html");
+    
     client.close();
+})
+app.post('/friendreq', async(req, res) => {
+    console.log(req.body)
+    if(req.session.user_id){
+        const sender = req.session.user;
+        const { friendname } = req.body;
+        const client = new MongoClient(uri);
+        
+        console.log(friendname);
+        console.log(sender);
+        try{
+            await client.connect();
+            const database = client.db('Ice');
+            const users = database.collection('Users');
+            const frreq = database.collection('Friend_Req');
+            const retrievedFriend = await users.findOne({ name: friendname });
+            console.log(retrievedFriend)
+            if(retrievedFriend){
+                const data = {
+                    from: sender,
+                    to: friendname
+                }
+                const insertFriendReq = await frreq.insertOne(data);
+            }
+        }catch(err){
+            console.log(err);
+        }
+        client.close();
+    }
+    var transport = nodemailer.createTransport({
+        host: "sandbox.smtp.mailtrap.io",
+        port: 2525,
+        auth: {
+            user: "cbd306e9c626cc",
+            pass: "2aeaa68084a5ed"
+        }
+        });
+    
+        const info = await transport.sendMail({
+            from: '"The Icebreaker" <icebreaker@gmail.com>', // sender address
+            to: "laksh.d.bulchandani@gmail.com", // list of receivers
+            subject: "Friend Request Sent", // Subject line
+            text: "Hello, your friend request has been sent" // plain text body
+         } )
+         console.log("Message sent: %s", info.messageId);
+         
+    res.sendFile(staticPath+'/index.html')
+    
 })
 
 app.listen(3000);
